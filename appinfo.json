@@ -1,0 +1,19 @@
+{
+  "uuid": "bd53896f-0b92-426c-acce-af5d93a227f5",
+  "shortName": "Sq Polar",
+  "longName": "Square Polar Clock",
+  "companyName": "npars",
+  "versionCode": 1,
+  "versionLabel": "1.0",
+  "sdkVersion": "3",
+  "targetPlatforms": ["aplite", "basalt"],
+  "watchapp": {
+    "watchface": true
+  },
+  "appKeys": {
+    "dummy": 0
+  },
+  "resources": {
+    "media": []
+  }
+}
