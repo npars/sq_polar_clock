@@ -1,26 +1,44 @@
+// Square Polar Clock Watch Face
+// Copyright (C) 2015 Neil Parsons 
+//
+// This program is free software; you can redistribute it and/or
+// modify it under the terms of the GNU General Public License
+// as published by the Free Software Foundation; either version 2
+// of the License, or (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program; if not, write to the Free Software
+// Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+//
 #include <pebble.h>
 
 #define HAND_LENGTH 111
 #define LAYER_WIDTH 26
-#define INVERT_LAYER_COUNT 8
+#define INVERT_LAYER_COUNT (4 * (TIME_COUNT - 1))
 #define POINT_COUNT 7
 
+// Determines the order of layers, from outer to inner
 enum time_sections {
-HOUR,
-MINUTE,
-SECOND,
-TIME_SIZE
+	HOUR,
+	MINUTE,
+	SECOND,
+	TIME_COUNT
 };
 
 static Window *window;
 
-static Layer* time_layers[TIME_SIZE];
+static Layer* time_layers[TIME_COUNT];
 static InverterLayer* invert_layers[INVERT_LAYER_COUNT];
 
-static int32_t time_angles[TIME_SIZE];
+static int32_t time_angles[TIME_COUNT];
 
-static GPath* time_paths[TIME_SIZE];
-static GPathInfo time_infos[TIME_SIZE] = {
+static GPath* time_paths[TIME_COUNT];
+static GPathInfo time_infos[TIME_COUNT] = {
 	{.num_points = POINT_COUNT, .points = (GPoint[POINT_COUNT]) {}},
 	{.num_points = POINT_COUNT, .points = (GPoint[POINT_COUNT]) {}},
 	{.num_points = POINT_COUNT, .points = (GPoint[POINT_COUNT]) {}}
@@ -136,36 +154,45 @@ static void window_load(Window *window) {
 	Layer *window_layer = window_get_root_layer(window);
 	GRect bounds = layer_get_bounds(window_layer);
 
-	time_layers[SECOND] = layer_create((GRect) {
-		.origin = { 0, 0 },
-		.size = {bounds.size.w, bounds.size.h}});
-	time_paths[SECOND] = gpath_create(&time_infos[SECOND]);
-	layer_set_update_proc(time_layers[SECOND], second_update_proc);
-	layer_add_child(window_layer, time_layers[SECOND]);
+	GRect layer_bounds[] = {
+		{
+			.origin = { 0, 0 },
+			.size = {bounds.size.w, bounds.size.h}
+		},
+		{
+			.origin = {LAYER_WIDTH, LAYER_WIDTH},
+			.size = {bounds.size.w - LAYER_WIDTH * 2, bounds.size.h - LAYER_WIDTH * 2}
+		},
+		{
+			.origin = {LAYER_WIDTH, LAYER_WIDTH},
+			.size = {bounds.size.w - LAYER_WIDTH * 4, bounds.size.h - LAYER_WIDTH * 4}
+		}
+	};
 
-	time_layers[MINUTE] = layer_create((GRect) {
-		.origin = {LAYER_WIDTH, LAYER_WIDTH},
-		.size = {bounds.size.w - LAYER_WIDTH * 2, bounds.size.h - LAYER_WIDTH * 2}});
-	time_paths[MINUTE] = gpath_create(&time_infos[MINUTE]);
-	layer_set_update_proc(time_layers[MINUTE], minute_update_proc);
-	layer_add_child(time_layers[SECOND], time_layers[MINUTE]);
-	int index = 0;
-	index = generate_inverter_layers(index, time_layers[MINUTE]);
+	void (*update_proc[TIME_COUNT]) (Layer *layer, GContext *ctx);
+	update_proc[SECOND] = &second_update_proc;
+	update_proc[MINUTE] = &minute_update_proc;
+	update_proc[HOUR] = &hour_update_proc;
 
-	time_layers[HOUR] = layer_create((GRect) {
-		.origin = {LAYER_WIDTH, LAYER_WIDTH},
-		.size = {bounds.size.w - LAYER_WIDTH * 4, bounds.size.h - LAYER_WIDTH * 4}});
-	time_paths[HOUR] = gpath_create(&time_infos[HOUR]);
-	layer_set_update_proc(time_layers[HOUR], hour_update_proc);
-	layer_add_child(time_layers[MINUTE], time_layers[HOUR]);
-	index = generate_inverter_layers(index, time_layers[HOUR]);
+	Layer* parent = window_layer;
+	for (int i = 0, j = 0; i < TIME_COUNT; i++) {
+		time_layers[i] = layer_create(layer_bounds[i]);
+		time_paths[i] = gpath_create(&time_infos[i]);
+		layer_set_update_proc(time_layers[i], *update_proc[i]);
+		layer_add_child(parent, time_layers[i]);
+		if (i > 0) {
+			j = generate_inverter_layers(j, time_layers[i]);
+		}
+		parent = time_layers[i];
+	}
 
+	// Kick off first update
 	time_t t = time(NULL);
 	tick_handler(localtime(&t), SECOND_UNIT | HOUR_UNIT | MINUTE_UNIT);
 }
 
 static void window_unload(Window *window) {
-	for (int i = 0; i < TIME_SIZE; i++) {
+	for (int i = 0; i < TIME_COUNT; i++) {
 		layer_destroy(time_layers[i]);
 		gpath_destroy(time_paths[i]);
 	}
