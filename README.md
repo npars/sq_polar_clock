@@ -3,6 +3,8 @@ _by Neil Parsons_
 
 Watch ticks around a square similar to polar clocks.
 
+[![ScreenShot](http://i.imgur.com/EdjN6Vl.gif)](http://imgur.com/EdjN6Vl)
+
 ###[Download & Changelog](https://github.com/npars/sq_polar_clock/releases)
 
 ## Build Instructions
